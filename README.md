@@ -78,6 +78,11 @@ o
 ![alt text](cc1.png)
 
 ---
+## 🧊 Ejecutable
+- Versión ejecutable para Windows (para hacer portable esta herramienta)
+- Versión Linux próximamente
+
+---
 ## ✍️ Autoría y comunidad
 Este proyecto forma parte de mi proceso de aprendizaje en desarrollo fullstack, adicionalmente está pensado para compartir con la comunidad (Conquer o quien lo necesite).
 
@@ -87,9 +92,6 @@ Si te sirve:
 - Sugerencias de contribución:
     - Mejoras de interfaz.
     - Nuevos tipos de comprobaciones de red.
-
-## ✅ Tarea
-Actualmente aprendinedo a crear versión empaquetada ejecutable para Windows y Linux (para hacer portable esta herramienta)
 
 Hecho con 🔥 para el Máster Full Stack en ConquerBlocks
 

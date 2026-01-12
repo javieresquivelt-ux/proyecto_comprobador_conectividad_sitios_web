@@ -1,4 +1,4 @@
-# import utilidades
+# Import utilidades
 import urllib.request
 import urllib.error
 import tkinter as tk
@@ -134,25 +134,39 @@ def comprobar_http_https(direccion, tipo_prueba):
 def hacer_ping(host):
     """
     Ejecuta un ping sencillo al host indicado.
+    Usa análisis de salida para Windows (TTL=) y returncode en Linux.
     """
     sistema = platform.system().lower()
     if "windows" in sistema:
         comando = ["ping", "-n", "1", "-w", "3000", host]
+        encoding = "cp850"  # consola Windows en español
     else:
         comando = ["ping", "-c", "1", "-W", "3", host]
+        encoding = "utf-8"
 
     try:
         resultado = subprocess.run(
             comando,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
+            encoding=encoding
         )
-        exito = (resultado.returncode == 0)
-        if exito:
-            return True, "Ping exitoso: el host respondió."
+        salida = resultado.stdout.lower()
+
+        if "windows" in sistema:
+            # Éxito solo si existe TTL= en la salida
+            if "ttl=" in salida:
+                return True, "Ping exitoso: el host respondió."
+            else:
+                return False, "Ping fallido: el host no respondió."
         else:
-            return False, "Ping fallido: el host no respondió."
+            exito = (resultado.returncode == 0)
+            if exito:
+                return True, "Ping exitoso: el host respondió."
+            else:
+                return False, "Ping fallido: el host no respondió."
+
     except FileNotFoundError:
         return False, "Comando 'ping' no encontrado en el sistema."
     except Exception as e:
@@ -315,11 +329,6 @@ def comprobar_tcp(direccion, servicio):
 def exportar_csv():
     """
     Exporta el contenido del Text de resultados a un archivo CSV.
-
-    Intenta soportar estos formatos de línea:
-        - "<host> → <mensaje>"
-        - "Host: X" + "Servicio: ... Resultado: Y"
-        - "URL: X" + "Método: ... Detalle: Y"
     """
     contenido = text_resultado.get("1.0", "end").strip()
     if not contenido:
@@ -347,7 +356,6 @@ def exportar_csv():
             if i + 1 < len(lineas):
                 siguiente = lineas[i + 1]
                 if "Resultado:" in siguiente:
-                    # Ejemplo: "Servicio: SSH | Puerto: 22 | Resultado: Puerto cerrado..."
                     partes = siguiente.split("Resultado:", 1)
                     mensaje = partes[1].strip()
                 else:
@@ -449,15 +457,29 @@ def actualizar_estado_servicios_tcp():
 def actualizar_modo_ping():
     """
     Habilita o deshabilita los campos de rango de IP
-    según el modo de ping seleccionado (único o rango).
+    según el modo de ping y solo cuando el tipo es PING.
     """
     modo = modo_ping_var.get()
+    tipo = tipo_prueba_var.get()
+
+    if tipo != "ping":
+        entry_ip_inicio.config(state="disabled")
+        entry_ip_fin.config(state="disabled")
+        return
+
     if modo == "unico":
         entry_ip_inicio.config(state="disabled")
         entry_ip_fin.config(state="disabled")
     else:
         entry_ip_inicio.config(state="normal")
         entry_ip_fin.config(state="normal")
+
+def on_cambio_tipo():
+    """
+    Se ejecuta cuando cambia el tipo de prueba.
+    """
+    actualizar_estado_servicios_tcp()
+    actualizar_modo_ping()
 
 def limpiar_text_resultado():
     """
@@ -494,7 +516,7 @@ radio_tipo_http = tk.Radiobutton(
     text="HTTP",
     variable=tipo_prueba_var,
     value="http",
-    command=actualizar_estado_servicios_tcp
+    command=on_cambio_tipo
 )
 radio_tipo_http.pack(side="left")
 
@@ -503,7 +525,7 @@ radio_tipo_https = tk.Radiobutton(
     text="HTTPS",
     variable=tipo_prueba_var,
     value="https",
-    command=actualizar_estado_servicios_tcp
+    command=on_cambio_tipo
 )
 radio_tipo_https.pack(side="left")
 
@@ -512,7 +534,7 @@ radio_tipo_ping = tk.Radiobutton(
     text="PING",
     variable=tipo_prueba_var,
     value="ping",
-    command=actualizar_estado_servicios_tcp
+    command=on_cambio_tipo
 )
 radio_tipo_ping.pack(side="left")
 
@@ -521,7 +543,7 @@ radio_tipo_tcp = tk.Radiobutton(
     text="TCP (SSH/FTP/SFTP/Telnet)",
     variable=tipo_prueba_var,
     value="tcp",
-    command=actualizar_estado_servicios_tcp
+    command=on_cambio_tipo
 )
 radio_tipo_tcp.pack(side="left")
 
@@ -568,7 +590,7 @@ label_ip_fin.pack(side="left")
 entry_ip_fin = tk.Entry(frame_rango, width=15)
 entry_ip_fin.pack(side="left", padx=5)
 
-# Inicialmente, deshabilitar los campos de rango (modo por defecto: único)
+# Inicialmente, deshabilitar los campos de rango
 entry_ip_inicio.config(state="disabled")
 entry_ip_fin.config(state="disabled")
 
@@ -613,8 +635,9 @@ radio_telnet = tk.Radiobutton(
 )
 radio_telnet.pack(side="left")
 
-# Estado inicial: deshabilitar grupo TCP si tipo no es tcp
+# Estado inicial de servicios TCP y modo ping
 actualizar_estado_servicios_tcp()
+actualizar_modo_ping()
 
 # Botones de acción
 frame_botones = tk.Frame(ventana)
