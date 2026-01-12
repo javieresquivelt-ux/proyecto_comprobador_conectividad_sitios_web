@@ -641,13 +641,20 @@ label_resultado.pack(pady=5)
 frame_text = tk.Frame(ventana)
 frame_text.pack(fill="both", expand=True, padx=10, pady=5)
 
+# Scrollbar vertical
+scrollbar_resultado = tk.Scrollbar(frame_text, orient="vertical")
+scrollbar_resultado.pack(side="right", fill="y")
+
 text_resultado = tk.Text(
     frame_text,
     height=10,
     width=100,
-    state="disabled"
+    state="disabled",
+    yscrollcommand=scrollbar_resultado.set
 )
-text_resultado.pack(fill="both", expand=True)
+text_resultado.pack(side="left", fill="both", expand=True)
+
+scrollbar_resultado.config(command=text_resultado.yview)
 
 # Configurar tags para estilos
 text_resultado.tag_configure("ok", foreground="green")
