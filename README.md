@@ -88,6 +88,9 @@ Si te sirve:
     - Mejoras de interfaz.
     - Nuevos tipos de comprobaciones de red.
 
+## ✅ Tarea
+Actualmente aprendinedo a crear versión empaquetada ejecutable para Windows y Linux (para hacer portable esta herramienta)
+
 Hecho con 🔥 para el Máster Full Stack en ConquerBlocks
 
 <!-- Python --> <img src="https://img.shields.io/badge/Python-3670A0?style=flat-square&logo=python&logoColor=ffdd54" alt="Python" />
