@@ -87,5 +87,5 @@ Hecho con 🔥 para la comunidad ConquerBlocks.
 
 <!-- Python --> <img src="https://img.shields.io/badge/Python-3670A0?style=flat-square&logo=python&logoColor=ffdd54" alt="Python" />
 
-![SO](https://img.shields.io/badge/SO-Linux%20-lightgrey)
-![Protocolo](https://img.shields.io/badge/protocolo-HTTP%20%7C%20HTTPS-orange)
+![SO](https://img.shields.io/badge/SO-Linux%20-lightgrey) 
+![SO](https://img.shields.io/badge/SO-Windows-lightgrey)
