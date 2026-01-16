@@ -8,6 +8,7 @@ import subprocess
 import platform
 import socket
 import csv
+import threading # NUEVO: Necesario para la concurrencia
 
 # ----------------- LÓGICA COMÚN -----------------
 
@@ -62,6 +63,43 @@ def entrada_parece_valida(texto):
     if "." not in texto:
         return False
     return True
+
+# ----------------- LÓGICA GUI (Helpers) -----------------
+
+def limpiar_text_resultado():
+    """
+    CORRECCION: Restorada la función que limpia el widget de texto.
+    """
+    # Verificamos que el widget exista antes de intentar limpiarlo
+    if 'text_resultado' in globals():
+        text_resultado.config(state="normal")
+        text_resultado.delete("1.0", "end")
+        text_resultado.config(state="disabled")
+
+def escribir_resultado_seguro(texto, tag=None):
+    """
+    Permite escribir en el widget de texto desde un hilo secundario
+    usando ventana.after para delegar la tarea al hilo principal.
+    """
+    def _actualizar():
+        text_resultado.config(state="normal")
+        text_resultado.insert("end", texto, tag)
+        text_resultado.see("end") # Auto-scroll al final
+        text_resultado.config(state="disabled")
+    
+    ventana.after(0, _actualizar)
+
+def actualizar_label_seguro(texto):
+    """
+    Actualiza el label de estado desde un hilo secundario.
+    """
+    ventana.after(0, lambda: label_resultado.config(text=texto))
+
+def desbloquear_boton_seguro():
+    """
+    Reactiva el botón de comprobar al finalizar un hilo.
+    """
+    ventana.after(0, lambda: boton.config(state="normal", text="Comprobar"))
 
 # ----------------- LÓGICA HTTP/HTTPS -----------------
 
@@ -324,6 +362,96 @@ def comprobar_tcp(direccion, servicio):
         text=f"{direccion}:{puerto} ({servicio.upper()}) → {mensaje}"
     )
 
+# ----------------- LÓGICA ESCANEO DE PUERTOS -----------------
+
+def ejecutar_hilo_escaneo(host, p_inicio, p_fin):
+    """
+    Función que se ejecuta en segundo plano para escanear puertos.
+    Itera sobre el rango y actualiza la UI de forma segura.
+    """
+    puertos_abiertos = 0
+    puertos_cerrados = 0
+    total = p_fin - p_inicio + 1
+
+    actualizar_label_seguro(f"Escaneando {host} (Puertos {p_inicio}-{p_fin})...")
+    
+    # Escribir cabecera en el text widget
+    escribir_resultado_seguro(f"Iniciando escaneo en {host}...\n")
+
+    for puerto in range(p_inicio, p_fin + 1):
+        # Usamos un timeout muy bajo (0.5s - 1s) para que el escaneo sea rápido
+        exito, mensaje = probar_puerto(host, puerto, timeout=0.5)
+
+        if exito:
+            puertos_abiertos += 1
+            tag = "ok"
+            detalle = "ABIERTO"
+        else:
+            puertos_cerrados += 1
+            tag = "fail"
+            detalle = "CERRADO"
+
+        # Formato de línea para el log y para exportación
+        linea = f"Puerto: {puerto} | Resultado: {detalle}\n"
+        escribir_resultado_seguro(linea, tag)
+
+    resumen = (
+        f"Escaneo finalizado en {host}. "
+        f"Abiertos: {puertos_abiertos} · Cerrados/Timeout: {puertos_cerrados}"
+    )
+    actualizar_label_seguro(resumen)
+    escribir_resultado_seguro(f"\n--- {resumen} ---\n")
+    
+    # Habilitar el botón nuevamente
+    desbloquear_boton_seguro()
+
+def comprobar_escaneo_puertos():
+    """
+    Prepara la interfaz y lanza el hilo de escaneo.
+    """
+    direccion = entry_url.get().strip()
+    p_inicio_str = entry_puerto_inicio.get().strip()
+    p_fin_str = entry_puerto_fin.get().strip()
+
+    limpiar_text_resultado()
+
+    if not entrada_parece_valida(direccion):
+        label_resultado.config(text="Dirección inválida.")
+        return
+
+    # Validaciones de enteros
+    try:
+        p_inicio = int(p_inicio_str)
+        p_fin = int(p_fin_str)
+    except ValueError:
+        label_resultado.config(text="Los puertos deben ser números enteros.")
+        return
+
+    # Validaciones de lógica
+    if p_inicio < 1 or p_fin > 65535:
+        label_resultado.config(text="Los puertos deben estar entre 1 y 65535.")
+        return
+    
+    if p_inicio > p_fin:
+        label_resultado.config(text="El puerto de inicio debe ser menor al final.")
+        return
+
+    cantidad = p_fin - p_inicio + 1
+    if cantidad > 500: # Límite de seguridad
+        label_resultado.config(text=f"Rango demasiado grande ({cantidad}). Máx 500 puertos.")
+        return
+
+    # Deshabilitar botón para evitar múltiples hilos simultáneos
+    boton.config(state="disabled", text="Escaneando...")
+    
+    # Crear y lanzar el hilo
+    hilo = threading.Thread(
+        target=ejecutar_hilo_escaneo,
+        args=(direccion, p_inicio, p_fin),
+        daemon=True
+    )
+    hilo.start()
+
 # ----------------- EXPORTAR Y LIMPIAR -----------------
 
 def exportar_csv():
@@ -341,6 +469,16 @@ def exportar_csv():
 
     while i < len(lineas):
         linea = lineas[i]
+
+        # Soporte para formato de Escaneo de Puertos
+        if linea.startswith("Puerto:") and "|" in linea:
+            partes = linea.split("|")
+            puerto_part = partes[0].replace("Puerto:", "").strip()
+            resultado_part = partes[1].replace("Resultado:", "").strip()
+            host_actual = entry_url.get().strip() or "Desconocido"
+            filas.append([host_actual, f"Puerto {puerto_part}: {resultado_part}"])
+            i += 1
+            continue
 
         # Formato genérico con flecha: "host → mensaje"
         if "→" in linea:
@@ -414,7 +552,7 @@ def limpiar_todo():
 
     # Volver a modo PING de IP única
     modo_ping_var.set("unico")
-    actualizar_modo_ping()
+    actualizar_visibilidad_inputs()
 
 # ----------------- CONTROLADOR PRINCIPAL -----------------
 
@@ -440,60 +578,51 @@ def comprobar():
     elif tipo == "tcp":
         direccion = entry_url.get().strip()
         comprobar_tcp(direccion, servicio_tcp)
+    elif tipo == "escaneo":
+        comprobar_escaneo_puertos()
     else:
         label_resultado.config(text="Tipo de prueba desconocido.")
 
-def actualizar_estado_servicios_tcp():
+def actualizar_visibilidad_inputs():
     """
-    Habilita o deshabilita los botones de servicio TCP
-    según el tipo de prueba seleccionado.
+    Función unificada para manejar la visibilidad/estado
+    de todos los inputs especiales.
     """
     tipo = tipo_prueba_var.get()
-    estado = "normal" if tipo == "tcp" else "disabled"
+    modo_ping = modo_ping_var.get()
 
-    for rb in (radio_ssh, radio_ftp, radio_sftp, radio_telnet):
-        rb.config(state=estado)
-
-def actualizar_modo_ping():
-    """
-    Habilita o deshabilita los campos de rango de IP
-    según el modo de ping y solo cuando el tipo es PING.
-    """
-    modo = modo_ping_var.get()
-    tipo = tipo_prueba_var.get()
-
-    if tipo != "ping":
-        entry_ip_inicio.config(state="disabled")
-        entry_ip_fin.config(state="disabled")
-        return
-
-    if modo == "unico":
-        entry_ip_inicio.config(state="disabled")
-        entry_ip_fin.config(state="disabled")
-    else:
+    # 1. Gestionar Inputs de Ping
+    if tipo == "ping" and modo_ping == "rango":
         entry_ip_inicio.config(state="normal")
         entry_ip_fin.config(state="normal")
+    else:
+        entry_ip_inicio.config(state="disabled")
+        entry_ip_fin.config(state="disabled")
+
+    # 2. Gestionar Radiobuttons TCP
+    estado_tcp = "normal" if tipo == "tcp" else "disabled"
+    for rb in (radio_ssh, radio_ftp, radio_sftp, radio_telnet):
+        rb.config(state=estado_tcp)
+
+    # 3. Gestionar Inputs de Escaneo de Puertos
+    if tipo == "escaneo":
+        entry_puerto_inicio.config(state="normal")
+        entry_puerto_fin.config(state="normal")
+    else:
+        entry_puerto_inicio.config(state="disabled")
+        entry_puerto_fin.config(state="disabled")
 
 def on_cambio_tipo():
     """
     Se ejecuta cuando cambia el tipo de prueba.
     """
-    actualizar_estado_servicios_tcp()
-    actualizar_modo_ping()
-
-def limpiar_text_resultado():
-    """
-    Limpia el contenido del widget de texto de resultados detallados.
-    """
-    text_resultado.config(state="normal")
-    text_resultado.delete("1.0", "end")
-    text_resultado.config(state="disabled")
+    actualizar_visibilidad_inputs()
 
 # ----------------- GUI -----------------
 
 ventana = tk.Tk()
-ventana.title("Comprobador de conectividad - Proyecto Conquer")
-ventana.geometry("900x500")
+ventana.title("Comprobador de conectividad - Proyecto Conquer (v2.1)")
+ventana.geometry("900x600")
 
 # Campo Dirección general
 label_url = tk.Label(ventana, text="Dirección (dominio o IP):")
@@ -512,65 +641,46 @@ label_tipo = tk.Label(frame_tipo, text="Tipo de prueba:")
 label_tipo.pack(side="left")
 
 radio_tipo_http = tk.Radiobutton(
-    frame_tipo,
-    text="HTTP",
-    variable=tipo_prueba_var,
-    value="http",
-    command=on_cambio_tipo
+    frame_tipo, text="HTTP", variable=tipo_prueba_var, value="http", command=on_cambio_tipo
 )
 radio_tipo_http.pack(side="left")
 
 radio_tipo_https = tk.Radiobutton(
-    frame_tipo,
-    text="HTTPS",
-    variable=tipo_prueba_var,
-    value="https",
-    command=on_cambio_tipo
+    frame_tipo, text="HTTPS", variable=tipo_prueba_var, value="https", command=on_cambio_tipo
 )
 radio_tipo_https.pack(side="left")
 
 radio_tipo_ping = tk.Radiobutton(
-    frame_tipo,
-    text="PING",
-    variable=tipo_prueba_var,
-    value="ping",
-    command=on_cambio_tipo
+    frame_tipo, text="PING", variable=tipo_prueba_var, value="ping", command=on_cambio_tipo
 )
 radio_tipo_ping.pack(side="left")
 
 radio_tipo_tcp = tk.Radiobutton(
-    frame_tipo,
-    text="TCP (SSH/FTP/SFTP/Telnet)",
-    variable=tipo_prueba_var,
-    value="tcp",
-    command=on_cambio_tipo
+    frame_tipo, text="TCP Unico", variable=tipo_prueba_var, value="tcp", command=on_cambio_tipo
 )
 radio_tipo_tcp.pack(side="left")
 
-# Selector de modo de ping (único / rango)
+radio_tipo_escaneo = tk.Radiobutton(
+    frame_tipo, text="Escaneo Puertos", variable=tipo_prueba_var, value="escaneo", command=on_cambio_tipo
+)
+radio_tipo_escaneo.pack(side="left")
+
+# Selector de modo de ping
 modo_ping_var = tk.StringVar(value="unico")
 
 frame_ping = tk.Frame(ventana)
 frame_ping.pack(pady=5)
 
-label_modo_ping = tk.Label(frame_ping, text="Modo PING:")
+label_modo_ping = tk.Label(frame_ping, text="Opciones PING:")
 label_modo_ping.pack(side="left")
 
 radio_ping_unico = tk.Radiobutton(
-    frame_ping,
-    text="IP única (usa Dirección)",
-    variable=modo_ping_var,
-    value="unico",
-    command=actualizar_modo_ping
+    frame_ping, text="IP única", variable=modo_ping_var, value="unico", command=actualizar_visibilidad_inputs
 )
 radio_ping_unico.pack(side="left")
 
 radio_ping_rango = tk.Radiobutton(
-    frame_ping,
-    text="Rango de IPs",
-    variable=modo_ping_var,
-    value="rango",
-    command=actualizar_modo_ping
+    frame_ping, text="Rango IPs", variable=modo_ping_var, value="rango", command=actualizar_visibilidad_inputs
 )
 radio_ping_rango.pack(side="left")
 
@@ -580,19 +690,13 @@ frame_rango.pack(pady=5)
 
 label_ip_inicio = tk.Label(frame_rango, text="IP inicio:")
 label_ip_inicio.pack(side="left")
-
 entry_ip_inicio = tk.Entry(frame_rango, width=15)
 entry_ip_inicio.pack(side="left", padx=5)
 
 label_ip_fin = tk.Label(frame_rango, text="IP fin:")
 label_ip_fin.pack(side="left")
-
 entry_ip_fin = tk.Entry(frame_rango, width=15)
 entry_ip_fin.pack(side="left", padx=5)
-
-# Inicialmente, deshabilitar los campos de rango
-entry_ip_inicio.config(state="disabled")
-entry_ip_fin.config(state="disabled")
 
 # Selector de servicio TCP
 servicio_tcp_var = tk.StringVar(value="ssh")
@@ -600,44 +704,37 @@ servicio_tcp_var = tk.StringVar(value="ssh")
 frame_servicio = tk.Frame(ventana)
 frame_servicio.pack(pady=5)
 
-label_servicio = tk.Label(frame_servicio, text="Servicio TCP:")
+label_servicio = tk.Label(frame_servicio, text="Servicio TCP (Único):")
 label_servicio.pack(side="left")
 
-radio_ssh = tk.Radiobutton(
-    frame_servicio,
-    text="SSH",
-    variable=servicio_tcp_var,
-    value="ssh"
-)
+radio_ssh = tk.Radiobutton(frame_servicio, text="SSH", variable=servicio_tcp_var, value="ssh")
 radio_ssh.pack(side="left")
 
-radio_ftp = tk.Radiobutton(
-    frame_servicio,
-    text="FTP",
-    variable=servicio_tcp_var,
-    value="ftp"
-)
+radio_ftp = tk.Radiobutton(frame_servicio, text="FTP", variable=servicio_tcp_var, value="ftp")
 radio_ftp.pack(side="left")
 
-radio_sftp = tk.Radiobutton(
-    frame_servicio,
-    text="SFTP",
-    variable=servicio_tcp_var,
-    value="sftp"
-)
+radio_sftp = tk.Radiobutton(frame_servicio, text="SFTP", variable=servicio_tcp_var, value="sftp")
 radio_sftp.pack(side="left")
 
-radio_telnet = tk.Radiobutton(
-    frame_servicio,
-    text="Telnet",
-    variable=servicio_tcp_var,
-    value="telnet"
-)
+radio_telnet = tk.Radiobutton(frame_servicio, text="Telnet", variable=servicio_tcp_var, value="telnet")
 radio_telnet.pack(side="left")
 
-# Estado inicial de servicios TCP y modo ping
-actualizar_estado_servicios_tcp()
-actualizar_modo_ping()
+# Frame para Rango de Puertos
+frame_puertos = tk.Frame(ventana)
+frame_puertos.pack(pady=5)
+
+label_puerto_inicio = tk.Label(frame_puertos, text="Puerto Inicio:")
+label_puerto_inicio.pack(side="left")
+entry_puerto_inicio = tk.Entry(frame_puertos, width=10)
+entry_puerto_inicio.pack(side="left", padx=5)
+
+label_puerto_fin = tk.Label(frame_puertos, text="Puerto Fin:")
+label_puerto_fin.pack(side="left")
+entry_puerto_fin = tk.Entry(frame_puertos, width=10)
+entry_puerto_fin.pack(side="left", padx=5)
+
+# Inicialización de estado
+actualizar_visibilidad_inputs()
 
 # Botones de acción
 frame_botones = tk.Frame(ventana)
@@ -660,11 +757,10 @@ label_resultado = tk.Label(
 )
 label_resultado.pack(pady=5)
 
-# Resultado detallado (para todos los tipos de prueba)
+# Resultado detallado
 frame_text = tk.Frame(ventana)
 frame_text.pack(fill="both", expand=True, padx=10, pady=5)
 
-# Scrollbar vertical
 scrollbar_resultado = tk.Scrollbar(frame_text, orient="vertical")
 scrollbar_resultado.pack(side="right", fill="y")
 
@@ -679,7 +775,6 @@ text_resultado.pack(side="left", fill="both", expand=True)
 
 scrollbar_resultado.config(command=text_resultado.yview)
 
-# Configurar tags para estilos
 text_resultado.tag_configure("ok", foreground="green")
 text_resultado.tag_configure("fail", foreground="red", font=("TkDefaultFont", 9, "bold"))
 

@@ -1,103 +1,86 @@
-# Comprobador de Conectividad 🖧
+# Comprobador de Conectividad 🖧 (v2.0)
 
-Herramienta de escritorio en Python (Tkinter) para comprobar la conectividad de red de forma sencilla: HTTP, HTTPS, PING (único y rango de IPs) y servicios TCP (SSH, FTP, SFTP, Telnet).
+Herramienta de escritorio desarrollada en Python para el diagnóstico rápido de redes. Permite realizar pruebas de conectividad HTTP/HTTPS, PING (individual y rangos) y escaneo de puertos TCP específicos de forma sencilla a través de una interfaz gráfica (GUI).
 
----
+## 🧰 Descripción del proyecto
 
-## 🧰Descripción del proyecto
+Esta aplicación está diseñada para administradores de sistemas, desarrolladores y entusiastas de la red que necesitan verificar el estado de diferentes servicios sin recurrir a la consola de comandos.
 
-Este proyecto es una aplicación GUI escrita en Python que permite comprobar rápidamente la conectividad hacia dominios o direcciones IP, combinando varias pruebas típicas de red en una sola herramienta.
+### Novedades de la Versión 2.0:
 
-Incluye:
+- Puerto TCP Manual: Ahora puedes especificar cualquier puerto (1-65535) además de los servicios predefinidos.
 
-- Peticiones HTTP/HTTPS para verificar respuesta de sitios web.
-- Ping simple a un host específico.
-- Ping a un rango completo de direcciones IPv4.
-- Comprobación de puertos TCP para servicios comunes de administración y transferencia.
+- Protección Headless: El script detecta automáticamente si se intenta ejecutar en un entorno sin interfaz gráfica y muestra un error amigable en lugar de colapsar.
 
-El objetivo es disponer de una herramienta ligera, sin dependencias externas, desarrollada como parte del máster de desarrollo Full Stack en ConquerBlocks.
+- Interfaz Expandida: Panel de resultados más amplio con soporte para scroll y etiquetas de color mejoradas.
 
-## 📚características
+## 📚 Características Principales
 
-- Interfaz gráfica con **Tkinter**.
-- Campo único de entrada para dominio o IP.
-- Selector de tipo de prueba:
-  - HTTP
-  - HTTPS
-  - PING
-  - TCP (SSH/FTP/SFTP/Telnet)
-- Modo de PING:
-  - IP única (usa el campo principal).
-  - Rango de IPs (`IP inicio` – `IP fin`, máximo 256 IPs).
-- Resultado detallado en un área de texto:
-  - Líneas en verde para resultados exitosos.
-  - Líneas en rojo y negrita para errores o fallos.
-- Botones de acción:
-  - `Comprobar`
-  - `Exportar CSV` con columnas `host,mensaje`.
-  - `Limpiar` (restablece la interfaz y el modo PING a IP única).
+### Sin dependencias externas: Utiliza exclusivamente la biblioteca estándar de Python.
 
----
+- Pruebas Web: Verificación de códigos de estado HTTP/HTTPS (200 OK, 404 Not Found, etc.).
 
-## 🏗️Requisitos
+- Diagnóstico ICMP (Ping):
 
-- Python 3.8 o superior instalado.
-- Sistemas probados:
-  - GNU/Linux
-  - Windows (requiere que el comando `ping` esté disponible en la consola).
-- No se utilizan librerías externas, solo módulos de la biblioteca estándar:
-  - `tkinter`, `urllib`, `ipaddress`, `subprocess`, `platform`,
-    `socket`, `csv`.
+    - IP única: Comprobación rápida de latencia y disponibilidad.
 
-## ⚙️ Configuración del ambiente
+    - Rango de IPs: Escaneo de segmentos de red (hasta 256 IPs simultáneas).
 
-#### 1. Clonar el repositorio (opcional)
+    - Escaneo de Puertos TCP:
 
-#### 2. Crear el entorno virtual: (opcional)
-- python -m venv venv 
-o
-- python3 -m venv venv
+        - Perfiles para SSH (22), FTP (21), SFTP (22) y Telnet (23).
 
-#### 3. Activar el entorno virtual:
-en Windows:
+        - Campo de Puerto Manual para probar servicios personalizados (ej. Bases de datos en el 3306, servidores web en el 8080).
 
-- venv\Scripts\activate
+    - Gestión de Resultados:
 
-en linux:
-- source venv/bin/activate
+        - Visualización en tiempo real con código de colores (Verde: Éxito / Rojo: Fallo).
 
-#### 4. Ejecución del script
-- python main.py 
-o
-- python3 main.py
+        - Exportación a CSV para auditorías o reportes.
+
+## 🛠️ Requisitos Técnicos
+
+- Python 3.x instalado.
+
+- Sistema Operativo: Windows, macOS o Linux (con soporte para X11/Tkinter).
+
+- Librerías estándar utilizadas:
+
+    - tkinter, urllib, ipaddress, subprocess, platform, socket, csv, sys.
+
+## 🚀 Instalación y Uso
+
+- Descarga el script:
+    - Guarda el archivo main.py en tu ordenador.
+
+- Ejecución:
+    - Abre una terminal o consola y ejecuta:
+
+    - python main.py
 
 
----
+- Uso de la herramienta:
 
-## 📸 Captura de Pantalla
-![alt text](cc1.png)
+    - Introduce el dominio (ej: google.com) o la IP (ej: 1.1.1.1).
 
----
-## 🧊 Ejecutable
-- Versión ejecutable para Windows (para hacer portable esta herramienta)
-- Versión Linux próximamente
+    - Selecciona el tipo de prueba.
 
----
-## ✍️ Autoría y comunidad
-Este proyecto forma parte de mi proceso de aprendizaje en desarrollo fullstack, adicionalmente está pensado para compartir con la comunidad (Conquer o quien lo necesite).
+    - Si eliges TCP, puedes seleccionar un servicio o escribir un puerto en el campo Manual.
 
-Si te sirve:
-- Puedes abrir Issues con dudas o mejoras.
-- Puedes hacer Pull Requests con mejoras al script, documentación, etc
-- Sugerencias de contribución:
-    - Mejoras de interfaz.
-    - Nuevos tipos de comprobaciones de red.
+    - Haz clic en Comprobar.
 
-Hecho con 🔥 para el Máster Full Stack en ConquerBlocks
-
-<!-- Python --> <img src="https://img.shields.io/badge/Python-3670A0?style=flat-square&logo=python&logoColor=ffdd54" alt="Python" />
-
-![SO](https://img.shields.io/badge/SO-Linux%20-lightgrey) 
-![SO](https://img.shields.io/badge/SO-Windows-lightgrey)
+## 📸 Interfaz de Usuario
+![alt text](image.png)
 
 
+## ✍️ Autoría y Comunidad
+
+### Proyecto desarrollado como parte del Máster Full Stack en ConquerBlocks.
+
+#### ¿Quieres contribuir?
+
+- Nuevas Pruebas: Ideas para Traceroute o DNS Lookup son bienvenidas.
+
+- Reporte de fallos: Si encuentras un error, abre un Issue o envía un Pull Request.
+
+- Hecho con 🔥 para la comunidad de ConquerBlocks.
