@@ -26,17 +26,17 @@ Esta aplicación está diseñada para administradores de sistemas, desarrollador
 
     - Rango de IPs: Escaneo de segmentos de red (hasta 256 IPs simultáneas).
 
-    - Escaneo de Puertos TCP:
+- Escaneo de Puertos TCP:
 
-        - Perfiles para SSH (22), FTP (21), SFTP (22) y Telnet (23).
+    - Perfiles para SSH (22), FTP (21), SFTP (22) y Telnet (23).
 
-        - Campo de Puerto Manual para probar servicios personalizados (ej. Bases de datos en el 3306, servidores web en el 8080).
+    - Campo de Puerto Manual para probar servicios personalizados (ej. Bases de datos en el 3306, servidores web en el 8080).
 
-    - Gestión de Resultados:
+- Gestión de Resultados:
 
-        - Visualización en tiempo real con código de colores (Verde: Éxito / Rojo: Fallo).
+    - Visualización en tiempo real con código de colores (Verde: Éxito / Rojo: Fallo).
 
-        - Exportación a CSV para auditorías o reportes.
+    - Exportación a CSV para auditorías o reportes.
 
 ## 🛠️ Requisitos Técnicos
 
@@ -75,7 +75,7 @@ Esta aplicación está diseñada para administradores de sistemas, desarrollador
 
 ## ✍️ Autoría y Comunidad
 
-### Proyecto desarrollado como parte del Máster Full Stack en ConquerBlocks.
+Este proyecto forma parte de mi proceso de aprendizaje en desarrollo fullstack, adicionalmente está pensado para compartir con la comunidad (Conquer o quien lo necesite).
 
 #### ¿Quieres contribuir?
 
@@ -83,4 +83,9 @@ Esta aplicación está diseñada para administradores de sistemas, desarrollador
 
 - Reporte de fallos: Si encuentras un error, abre un Issue o envía un Pull Request.
 
-- Hecho con 🔥 para la comunidad de ConquerBlocks.
+Hecho con 🔥 para la comunidad ConquerBlocks.
+
+<!-- Python --> <img src="https://img.shields.io/badge/Python-3670A0?style=flat-square&logo=python&logoColor=ffdd54" alt="Python" />
+
+![SO](https://img.shields.io/badge/SO-Linux%20-lightgrey)
+![Protocolo](https://img.shields.io/badge/protocolo-HTTP%20%7C%20HTTPS-orange)
